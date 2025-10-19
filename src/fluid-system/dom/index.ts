@@ -13,7 +13,7 @@ export type RenderResult = {
 
 export const Fragment = Symbol("Fragment");
 
-export function jsx(tag: string, props: any, key?: string): RenderResult {
+export function jsx(tag: string, props: any): RenderResult {
   const fragment = document.createDocumentFragment();
   const holes: Hole[] = [];
 

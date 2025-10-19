@@ -1,6 +1,9 @@
 import { connectHoles } from "./fluid-system/flusher";
 import { createAtom } from "./fluid-system/atom";
 
+// transformer hints
+import { jsx } from "./fluid-system/dom";
+
 const [count, setCount] = createAtom(0);
 
 const App = () => (
@@ -8,7 +11,7 @@ const App = () => (
     <p>Count: {count}</p>
 
     <button
-      onclick={() => {
+      onClick={() => {
         setCount((prev) => prev + 1);
       }}
     >

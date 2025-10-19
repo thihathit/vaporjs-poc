@@ -22,8 +22,9 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
-    "jsx": "react-jsx",
-    "jsxImportSource": "/src/fluid-system/dom"
+    "jsx": "react",
+    "jsxFactory": "jsx",
+    "jsxFragmentFactory": "Fragment"
   },
   "include": ["src"]
 }
