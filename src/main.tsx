@@ -4,19 +4,30 @@ import { createAtom } from "./fluid-system/atom";
 // transformer hints
 import { jsx } from "./fluid-system/dom";
 
-const [count, setCount] = createAtom(0);
+const [count1, setCount1] = createAtom(0);
+const [count2, setCount2] = createAtom(0);
+
+const increase2 = () => {
+  setCount2((prev) => prev + 1);
+};
+
+setInterval(() => {
+  setCount1((prev) => prev + 1);
+}, 10);
 
 const App = () => (
   <div>
-    <p>Count: {count}</p>
+    <div>
+      <p>Counter 1: {count1}</p>
+    </div>
 
-    <button
-      onClick={() => {
-        setCount((prev) => prev + 1);
-      }}
-    >
-      Increment
-    </button>
+    <hr />
+
+    <div>
+      <p>Counter 2: {count2}</p>
+
+      <button onClick={increase2}>Increment</button>
+    </div>
   </div>
 );
 
