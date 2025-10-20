@@ -1,392 +1,420 @@
-# 🎮 FrameSync / VaporJS
+# 🎮 VaporJS - POC
 
-> A game-engine inspired UI framework that decouples state mutations from rendering, synchronizing DOM updates with your display's refresh rate.
+> A game-engine inspired reactive UI framework using **FrameSync** — a novel rendering technique that decouples state mutations from rendering, synchronizing DOM updates with your display's refresh rate.
 
-## Why FrameSync?
+## What is FrameSync?
 
-Traditional UI frameworks like React, Vue, and Svelte couple state changes directly to rendering. When you update state, they immediately schedule a render—often multiple times per frame, wasting CPU cycles rendering updates the user will never see.
+**FrameSync** is a rendering paradigm inspired by game engines where state mutations happen instantly, but rendering is synchronized to the display's refresh rate via `requestAnimationFrame`.
 
-**FrameSync takes a different approach:** inspired by game engines, it separates state mutations from rendering entirely.
+Traditional frameworks couple state changes to rendering. VaporJS separates them completely.
 
-### The Problem with Traditional Frameworks
 ```javascript
-// React/Vue/Svelte approach:
-setState(1);  // Schedules render
-setState(2);  // Schedules another render
-setState(3);  // Schedules yet another render
-// Result: Up to 3 renders in < 16ms, but display only shows once per frame
+// Traditional frameworks (React, Vue, Svelte):
+setState(1);  // Triggers render pipeline
+setState(2);  // Triggers render pipeline again
+setState(3);  // Triggers render pipeline again
+// Result: Multiple render cycles, even within a single frame
+
+// VaporJS with FrameSync:
+setCount(1);  // Updates atom instantly (synchronous)
+setCount(2);  // Updates atom instantly (synchronous)
+setCount(3);  // Updates atom instantly (synchronous)
+// Result: One render on next frame with final value (count = 3)
 ```
 
-Even with batching optimizations, frameworks render faster than your display can show (60Hz/120Hz/144Hz). **You can't see updates faster than your refresh rate**, so why render them?
-
-### The FrameSync Solution
-```javascript
-// FrameSync approach:
-state.count = 1;  // Updates immediately (synchronous)
-state.count = 2;  // Updates immediately (synchronous)
-state.count = 3;  // Updates immediately (synchronous)
-// Result: One render on next frame with final value
-```
-
-**State updates are instant.** Rendering syncs to your display's refresh rate via `requestAnimationFrame`. Like a game engine, state and rendering are separate concerns.
-
-## Core Philosophy
-
-### 🎯 State Updates: Instant & Synchronous
-```javascript
-// State mutations happen immediately
-player.position.x = 100;
-player.health = 50;
-enemy.isActive = false;
-
-// Changes are immediately readable
-console.log(player.position.x); // 100 - no waiting!
-```
-
-No batching. No microtasks. No delays. State is just... state.
-
-### 🖼️ Rendering: Frame-Synced via rAF
-```javascript
-// Render loop runs independently at display refresh rate
-requestAnimationFrame(() => {
-  // Read current state and update DOM
-  render(player, enemy);
-});
-```
-
-One render per frame. Perfectly synced with your display. Zero wasted renders.
-
-## Installation
-```bash
-npm install framesync-ui
-```
-
-## Quick Start
-```javascript
-import { createApp } from 'framesync-ui';
-
-const app = createApp({
-  // Your state (plain objects)
-  state: {
-    count: 0,
-    todos: []
-  },
-
-  // Render function (called every frame)
-  render(state) {
-    document.getElementById('count').textContent = state.count;
-  }
-});
-
-// Update state instantly
-document.getElementById('btn').onclick = () => {
-  app.state.count++; // Instant update
-  // DOM updates on next frame automatically
-};
-```
+**Why this matters:**
+- Your display refreshes at 60/120/144Hz
+- You can't see updates faster than your refresh rate
+- Why render multiple times when the display only shows once per frame?
 
 ## Key Features
 
-### ✅ No Wasted Renders
-Renders only once per display frame, regardless of how many state mutations occur.
+### ⚡ **Instant State Updates**
+Atom mutations are synchronous. No batching delays, no microtasks, no promises.
 
-### ✅ Instant State Updates
-State changes are synchronous—no waiting for microtasks, promises, or batching.
+```javascript
+const [count, setCount] = createAtom(0);
 
-### ✅ Automatic Frame Sync
-Uses `requestAnimationFrame` to align updates with your display's refresh rate (60Hz/120Hz/144Hz).
+setCount(5); // Updates immediately
+console.log(count()); // 5 - instantly readable
+```
 
-### ✅ Background Tab Optimization
-When your tab is in the background, `rAF` automatically pauses—saving CPU and battery.
+### 🖼️ **Frame-Synced Rendering**
+Asynchronous DOM updates happen once per display frame via `requestAnimationFrame`, perfectly aligned with your monitor's refresh rate.
 
-### ✅ Simple Mental Model
-State is data. Rendering reads data. They're separate concerns, like in game engines.
+### 🎯 **Fine-Grained Reactivity**
+Like Solid.js, VaporJS tracks reactive dependencies and updates only affected DOM nodes. No virtual DOM, no diffing.
 
-### ✅ Predictable Performance
-One state → One frame → One render. No surprises, no cascading updates.
+```jsx
+const [count, setCount] = createAtom(0);
+
+// Only the text node updates when count changes
+<div>
+  <p>Count: {count}</p>  {/* Reactive */}
+  <p>Static text</p>       {/* Never re-evaluated */}
+</div>
+```
+
+### 🔥 **JSX with Manual Binding**
+VaporJS uses JSX for ergonomics but extracts reactive "holes" at runtime, binding them directly to DOM nodes without a compiler (compiler optimization possible in the future).
+
+### 🔋 **Automatic Background Optimization**
+When your tab goes to the background, `requestAnimationFrame` pauses automatically. Saving CPU and battery.
+
+### 🎨 **Zero Wasted Renders**
+No matter how many atom updates happen in a frame, only one render occurs. Perfectly synced to display refresh.
+
+## Quick Start
+
+Clone the repo. Navigate to `src/main.tsx`.
+
+```tsx
+import { createAtom } from "./atom";
+import { jsx } from "./fluid-system/dom";
+import { connectHoles } from "./fluid-system/flusher";
+
+const [count, setCount] = createAtom(0);
+
+const App = () => (
+  <div>
+    <p>Count: {count()}</p>
+    <button onClick={() => setCount(prev => prev + 1)}>
+      Increment
+    </button>
+  </div>
+);
+
+const tree = App();
+const { syncFrame } = connectHoles(tree.holes);
+
+// Start the FrameSync render loop
+syncFrame();
+
+// Mount to DOM
+document.querySelector("#app")!.append(tree.fragment);
+```
+
+That's it! VaporJS handles the rest.
+
+## Core Concepts
+
+### 1. **Atoms** (Reactive State)
+
+Atoms are VaporJS's reactive primitives. Similar to Solid.js signals.
+
+> [!WARNING]
+> The current atom implementation will be replaced with a more efficient system to provide finer-grained control.
+
+```typescript
+import { createAtom } from "./atom";
+
+const [count, setCount] = createAtom(0);
+
+// Read value
+console.log(count.get()); // 0
+
+// Update value
+setCount(5);
+console.log(count.get()); // 5
+
+// Functional updates
+setCount(prev => prev + 1);
+console.log(count.get()); // 6
+```
+
+**Key characteristics:**
+- ✅ Synchronous reads and writes
+- ✅ Single dependency tracking
+- ✅ No batching. Updates are instant
+
+### 2. **JSX & The Fluid System**
+
+VaporJS uses JSX for templating but processes it similar to SolidJS:
+
+```tsx
+import { jsx } from "./fluid-system/dom";
+
+const [name, setName] = createAtom("World");
+
+const Greeting = () => (
+  <div>
+    <h1>Hello, {name}!</h1>  {/* Reactive hole */}
+    <p>Welcome to VaporJS</p>   {/* Static */}
+  </div>
+);
+```
+
+**What happens:**
+1. JSX is transformed into `jsx()` function calls
+2. VaporJS extracts **reactive holes** (e.g., `{name}`)
+3. These holes are bound directly to DOM text nodes
+4. When `name` changes, only that text node updates
+
+**No virtual DOM. No diffing. Just direct bindings.**
+
+### 3. **FrameSync Loop**
+
+The magic happens in `syncFrame()`:
+
+**What it does:**
+```typescript
+// Check which atoms changed (dirty flag)
+const { syncFrame } = connectHoles(tree.holes);
+
+// Starts the render loop
+syncFrame();
+// Update only affected DOM nodes
+// Repeat next frame
+```
+
+**Key insight:** State updates flip a "dirty flag" on affected bindings. The render loop flushes these dirty nodes once per frame.
+
+### 4. **Reactivity Flow**
+
+```
+User clicks button
+  ↓
+setCount(prev => prev + 1)  ← Atom updates instantly
+  ↓
+Marks dependent nodes as "dirty"
+  ↓
+["syncFrame" loop wait for next frame...]
+  ↓
+Flushes dirty nodes → Updates DOM
+  ↓
+Display refreshes → User sees change
+```
+
+**Timeline:**
+- `t=0ms`: Button click, atom updates, dirty flag set
+- `t=16ms`: Display refreshes, `syncFrame()` flushes dirty nodes
+- Result: One render per frame, perfectly synced
 
 ## Architecture
 
-### Game Engine Pattern
+### The FrameSync Pipeline
 
-FrameSync follows the classic game loop architecture:
 ```
-┌─────────────────┐
-│  State Layer    │  ← Instant mutations (any time)
-│  (Plain Data)   │
-└────────┬────────┘
-         │
-         │ reads
-         ↓
-┌─────────────────┐
-│  Render Loop    │  ← Frame-synced (60/120/144 FPS)
-│  (rAF-driven)   │
-└─────────────────┘
+┌─────────────────────────────────┐
+│     Atom Layer (State)          │
+│  - Instant, synchronous updates │
+│  - Dependency tracking          │
+│  - Dirty flag management        │
+└──────────────┬──────────────────┘
+               │
+               │ notifies
+               ↓
+┌─────────────────────────────────┐
+│   Reactive Holes (Bindings)     │
+│  - Maps atoms → DOM nodes       │
+│  - Tracks "dirty" state         │
+└──────────────┬──────────────────┘
+               │
+               │ reads
+               ↓
+┌─────────────────────────────────┐
+│  FrameSync Loop (Rendering)     │
+│  - Runs via requestAnimationFrame│
+│  - Flushes dirty nodes once/frame│
+│  - Updates DOM directly         │
+└─────────────────────────────────┘
 ```
 
-**Compare to traditional frameworks:**
-```
-Traditional:  State Change → Trigger Render → Update DOM
-FrameSync:    State Change (instant) ← → Render Loop (independent)
-```
+### Comparison to Other Frameworks
 
-### Why This Works
+| Framework | State Updates | Rendering Trigger | Renders/Frame | Virtual DOM |
+|-----------|---------------|-------------------|---------------|-------------|
+| **React** | Batched (microtask) | State change | Multiple (batched) | Yes |
+| **Vue 3** | Batched (microtask) | State change | Multiple (batched) | Yes |
+| **Svelte** | Batched (microtask) | State change | Multiple (batched) | No (compiled) |
+| **Solid.js** | Synchronous | State change | Multiple | No (fine-grained) |
+| **VaporJS** | Synchronous | **rAF loop** | **Exactly one** | No (fine-grained) |
 
-1. **Human perception is limited**: You can't see updates faster than ~165Hz
-2. **Displays are the bottleneck**: Monitors refresh at 60Hz/120Hz/144Hz
-3. **State logic is fast**: Most state mutations take < 1ms
-4. **Rendering is expensive**: DOM updates are the slow part
+**The key difference:** VaporJS is the only framework that decouples rendering from state updates using FrameSync.
 
-**Separate them, and both run optimally.**
+## Examples - Currently impossible due to lack of proper child node implementation
 
-## Examples
+### Real-time Data Visualization
 
-### Counter App
-```javascript
-import { createApp } from 'framesync-ui';
+```tsx
+const [dataPoints, setDataPoints] = createAtom([]);
 
-const app = createApp({
-  state: {
-    count: 0
-  },
-
-  render(state) {
-    const el = document.getElementById('counter');
-    el.textContent = `Count: ${state.count}`;
-  }
-});
-
-// Updates are instant
+// Simulate high-frequency updates (e.g., stock prices)
 setInterval(() => {
-  app.state.count++;
-}, 10); // Updating every 10ms, but rendering at 60fps
+  setDataPoints(prev => [
+    ...prev,
+    { time: Date.now(), value: Math.random() * 100 }
+  ].slice(-50)); // Keep last 50 points
+}, 10); // Updating every 10ms!
+
+const Chart = () => (
+  <svg width="500" height="200">
+    {dataPoints().map((point, i) => (
+      <circle
+        cx={i * 10}
+        cy={200 - point.value}
+        r="2"
+        fill="blue"
+      />
+    ))}
+  </svg>
+);
+
+// Despite 100 updates/second, only renders at 60fps (or your display's refresh rate)
 ```
 
-### Todo List
-```javascript
-const app = createApp({
-  state: {
-    todos: [],
-    filter: 'all'
-  },
+### Game-like Animation
 
-  render(state) {
-    const filtered = state.todos.filter(t =>
-      state.filter === 'all' || t.status === state.filter
-    );
+```tsx
+const [player, setPlayer] = createAtom({ x: 0, y: 0, vx: 0, vy: 0 });
 
-    document.getElementById('todos').innerHTML = filtered
-      .map(t => `<li>${t.text}</li>`)
-      .join('');
-  }
+// Physics update (runs every frame)
+const update = (deltaTime) => {
+  setPlayer(prev => ({
+    x: prev.x + prev.vx * deltaTime,
+    y: prev.y + prev.vy * deltaTime,
+    vx: prev.vx * 0.98, // Friction
+    vy: prev.vy * 0.98
+  }));
+};
+
+// Input handling
+document.addEventListener("keydown", (e) => {
+  setPlayer(prev => {
+    if (e.key === "ArrowRight") return { ...prev, vx: 5 };
+    if (e.key === "ArrowLeft") return { ...prev, vx: -5 };
+    if (e.key === "ArrowUp") return { ...prev, vy: -5 };
+    if (e.key === "ArrowDown") return { ...prev, vy: 5 };
+    return prev;
+  });
 });
 
-// Add todo (instant)
-app.state.todos.push({ text: 'Learn FrameSync', status: 'active' });
+const Game = () => (
+  <div
+    style={{
+      position: "absolute",
+      left: `${player().x}px`,
+      top: `${player().y}px`,
+      width: "50px",
+      height: "50px",
+      background: "blue"
+    }}
+  />
+);
 
-// Change filter (instant)
-app.state.filter = 'active';
+// Custom update loop
+let lastTime = performance.now();
+function gameLoop() {
+  const now = performance.now();
+  const deltaTime = (now - lastTime) / 1000; // Convert to seconds
+  lastTime = now;
 
-// Both render on next frame
+  update(deltaTime);
+
+  requestAnimationFrame(gameLoop);
+}
+gameLoop();
 ```
 
-### Animation / Game-like Interaction
-```javascript
-const app = createApp({
-  state: {
-    player: { x: 0, y: 0 },
-    enemies: []
-  },
+## Expected Performance Characteristics
 
-  render(state, deltaTime) {
-    // deltaTime = ms since last frame
-    const canvas = document.getElementById('game');
-    const ctx = canvas.getContext('2d');
+**Strengths:**
+- ⚡ Extremely fast for high-frequency updates (no wasted renders)
+- 🎯 Fine-grained reactivity (updates only changed nodes)
+- 🔋 Battery-efficient (background tab optimization)
+- 📦 Small bundle size (no virtual DOM, no compiler required)
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillRect(state.player.x, state.player.y, 50, 50);
+**Trade-offs:**
+- Initial render may be slightly slower than compiled frameworks (Svelte)
+- No compiler optimizations (- yet, possible future direction)
+- Manual JSX binding at runtime (could be optimized)
 
-    state.enemies.forEach(e => {
-      ctx.fillRect(e.x, e.y, 30, 30);
-    });
-  }
-});
+## Roadmap
 
-// Game loop updates (runs every frame via rAF)
-app.onUpdate((state, deltaTime) => {
-  // Physics/logic updates happen here
-  state.player.x += state.player.velocityX * deltaTime;
-  state.player.y += state.player.velocityY * deltaTime;
+### Near-term
+- [ ] Effects API (`createEffect`, `createMemo`)
+- [ ] Lifecycle hooks
+- [ ] More examples and templates
+- [ ] Performance benchmarks
+- [ ] DevTools extension
 
-  // Collision detection, AI, etc.
-});
+### Future Exploration
+- [ ] **Compiler approach**: Optimize reactive bindings at compile-time (like Solid.js)
+- [ ] **ECS integration**: Bring Entity-Component-System patterns to DOM
+- [ ] **WebGL/Canvas renderer**: Extend FrameSync beyond DOM
+- [ ] **Time-slicing**: Optional work splitting for heavy computations
+- [ ] **Concurrent rendering**: Pause/resume capability for large updates
 
-// Input handling (instant state updates)
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowRight') state.player.velocityX = 5;
-  if (e.key === 'ArrowLeft') state.player.velocityX = -5;
-});
-```
+## Philosophy
 
-## API Reference
+VaporJS is built on these principles:
 
-### `createApp(options)`
+1. **State and rendering are separate concerns**
+   Like game engines, state mutations should be instant and rendering should sync to display hardware.
 
-Creates a new FrameSync application.
-```javascript
-const app = createApp({
-  state: {},        // Initial state (plain object)
-  render(state) {}, // Render function (called every frame)
-  onUpdate(state, deltaTime) {} // Optional: Update hook
-});
-```
+2. **Respect the display refresh rate**
+   Rendering faster than 60/120/144Hz is wasted work. Sync to the frame.
 
-### `app.state`
+3. **Fine-grained reactivity**
+   Update only what changed. No virtual DOM, no diffing.
 
-Direct access to application state. Mutations are instant and synchronous.
-```javascript
-app.state.count = 10;
-console.log(app.state.count); // 10 (immediately)
-```
+4. **Simple mental model**
+   State is just data. Rendering is just a loop. No magic.
 
-### `app.render(state, deltaTime)`
-
-Called automatically every frame. Receives current state and time since last frame.
-
-- `state`: Current application state
-- `deltaTime`: Milliseconds since last frame (useful for animations)
-
-### `app.onUpdate(callback)`
-
-Optional hook for frame-based logic updates (physics, AI, etc.).
-```javascript
-app.onUpdate((state, deltaTime) => {
-  // Update game logic, animations, etc.
-  state.position.x += state.velocity * deltaTime;
-});
-```
-
-### `app.start()` / `app.stop()`
-
-Control the render loop.
-```javascript
-app.start();  // Starts rAF loop
-app.stop();   // Stops rAF loop
-```
-
-## Performance Characteristics
-
-### Traditional Framework (e.g., React)
-```
-User clicks button (t=0ms)
-  → setState queued
-  → Microtask scheduled
-  → Reconciliation (t=1ms)
-  → DOM update (t=2ms)
-  → Display refresh (t=16ms)
-```
-
-**Multiple updates in one frame:**
-```
-setState #1 (t=0ms) → render
-setState #2 (t=5ms) → render
-setState #3 (t=10ms) → render
-Display refresh (t=16ms) → shows only final result
-```
-
-### FrameSync
-```
-User clicks button (t=0ms)
-  → State updates instantly (t=0ms)
-  → Display refresh (t=16ms) → render with current state
-```
-
-**Multiple updates in one frame:**
-```
-state.count = 1 (t=0ms)  ← instant
-state.count = 2 (t=5ms)  ← instant
-state.count = 3 (t=10ms) ← instant
-Display refresh (t=16ms) → render once with count=3
-```
-
-## Comparisons
-
-| Feature | React 18+ | Vue 3 | Solid.js | FrameSync |
-|---------|-----------|-------|----------|-----------|
-| **State updates** | Batched (microtask) | Batched (microtask) | Synchronous | Synchronous |
-| **Rendering** | Priority-based | Microtask queue | Fine-grained sync | Frame-synced (rAF) |
-| **Renders per frame** | Multiple (batched) | Multiple (batched) | Multiple | Exactly one |
-| **Can pause rendering?** | Yes (concurrent) | No | No | No (completes in frame budget) |
-| **Background tab behavior** | Still renders | Still renders | Still renders | Auto-pauses (rAF) |
-| **Mental model** | Component-based | Component-based | Reactive signals | Game loop |
-| **Best for** | Complex apps | General purpose | Fine-grained updates | Performance-critical, visual apps |
-
-## When to Use FrameSync
-
-### ✅ Great For:
-
-- **Data visualizations** (charts, graphs, dashboards)
-- **Real-time applications** (live feeds, trading platforms)
-- **Games and simulations**
-- **Animation-heavy UIs**
-- **High-frequency updates** (websockets, sensors)
-- **Performance-critical applications**
-
-### ⚠️ Consider Alternatives For:
-
-- **Form-heavy applications** (traditional CRUD apps)
-- **Server-side rendering** (SSR/SSG) - rAF doesn't exist on server
-- **Apps requiring immediate visual feedback** (typing indicators, autocomplete) - though state updates are still instant
-
-## FAQ
-
-### Q: Won't rAF make my app feel laggy?
-
-**No.** State updates are instant. Only rendering waits for the next frame, which happens at your display's refresh rate (typically 60-144 times per second). This is imperceptible to users.
-
-### Q: What about form inputs?
-
-State updates are synchronous, so your application logic can respond immediately. The visual update (DOM) happens on the next frame (< 16ms), which is fast enough for great UX.
-
-### Q: How is this different from React's concurrent mode?
-
-React's concurrent mode can pause and resume rendering work, prioritizing urgent updates. FrameSync doesn't pause rendering—it completes one full render per frame. State updates are instant, and rendering is deterministic.
-
-### Q: Does this work with TypeScript?
-
-Yes! FrameSync is written in TypeScript with full type definitions.
-
-### Q: What about SSR/SSG?
-
-FrameSync is client-side focused (uses `requestAnimationFrame`). For SSR, you'd render initial state server-side, then hydrate client-side with the render loop.
-
-### Q: Can I use this with existing frameworks?
-
-FrameSync is a standalone framework with a different architecture. You can't easily integrate it with React/Vue/etc. because they couple state and rendering differently.
+5. **Performance by design**
+   Don't optimize bad architectures. Start with a good one.
 
 ## Inspiration
 
-FrameSync is inspired by:
+VaporJS draws inspiration from:
 
-- **Game engines** (Unity, Unreal, Godot) - separation of game state and rendering
-- **Three.js** - render loops independent of state updates
-- **ECS architecture** (Entity-Component-System) - data-oriented design
-- The observation that web frameworks render faster than displays can show
+- **Game engines** (Unity, Godot, Bevy) - render loops and state separation
+- **Solid.js** - fine-grained reactivity without virtual DOM
+- **Three.js** - independent render loops
+- **ECS architecture** - data-oriented design patterns
+- The observation that web frameworks waste renders between display refreshes
+
+## FAQ
+
+### Why not use Solid.js?
+
+Solid.js is amazing, but it still couples state changes to immediate DOM updates. VaporJS takes it further by decoupling rendering entirely via FrameSync.
+
+### Will this work for forms and inputs?
+
+Yes! State updates are instant, so your logic responds immediately. The visual update (DOM) happens on the next frame (< 16ms at 60fps), which is imperceptible to users.
+
+### What about SSR/SSG?
+
+VaporJS is currently client-focused (uses `requestAnimationFrame`). SSR/SSG support is on the roadmap, likely following a hydration approach similar to other frameworks.
+
+### Can I use this in production?
+
+VaporJS is **experimental**. It explores a novel rendering paradigm. Use at your own risk, but we'd love feedback!
+
+### Why "Vapor"?
+
+Like vapor, it's light and fast. And it's inspired by vaporwave aesthetics. Smooth, synchronized, and performant. 🌊✨
+
+### Will there be a compiler?
+
+Possibly! Right now VaporJS binds reactivity at runtime (like early Solid.js). A compiler could optimize this further, eliminating runtime overhead. It's on the roadmap.
 
 ## Contributing
 
-We welcome contributions! This is an experimental framework exploring a different paradigm.
+We welcome contributions! VaporJS is an exploration of a new paradigm.
 
-Areas for contribution:
-- Performance benchmarks vs other frameworks
-- Developer tooling (DevTools extension)
-- More examples and templates
-- Documentation improvements
+**Areas for help:**
+- 🧪 Benchmarks and performance testing
+- 📚 Documentation and examples
+- 🛠️ Developer tooling (DevTools, VSCode extensions)
+- 🎨 UI component library
+- 🔬 Compiler exploration
 
 ## License
 
-MIT
+MIT License - see [LICENSE](./LICENSE) for details.
 
 ---
 
-**FrameSync**: State at the speed of thought. Rendering at the speed of light (well, 60-144 FPS). 🎮✨
+**VaporJS**: Instant state. Frame-synced rendering. A new paradigm. 🎮✨
