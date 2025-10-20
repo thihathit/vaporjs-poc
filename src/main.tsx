@@ -1,7 +1,5 @@
 import { connectHoles } from "./fluid-system/flusher";
 import { createAtom } from "./fluid-system/atom";
-
-// transformer hints
 import { jsx } from "./fluid-system/dom";
 
 const [count1, setCount1] = createAtom(0);

@@ -13,15 +13,18 @@ export type RenderResult = {
 
 export const Fragment = Symbol("Fragment");
 
-export function jsx(tag: string, props: any): RenderResult {
+export function jsx(tag: string, props: any, ...children: any[]): RenderResult {
   const fragment = document.createDocumentFragment();
   const holes: Hole[] = [];
+
+  // Merge children from props and arguments
+  const allChildren = children.length > 0 ? children : props?.children;
 
   // Handle fragment
   // @ts-ignore
   if (tag === Fragment) {
-    const children = normalizeChildren(props?.children, holes);
-    for (const c of children) fragment.append(c);
+    const normalizedChildren = normalizeChildren(allChildren, holes);
+    for (const c of normalizedChildren) fragment.append(c);
     return { fragment, holes };
   }
 
@@ -51,8 +54,8 @@ export function jsx(tag: string, props: any): RenderResult {
   }
 
   // Handle children
-  const children = normalizeChildren(props?.children, holes);
-  for (const c of children) el.append(c);
+  const normalizedChildren = normalizeChildren(allChildren, holes);
+  for (const c of normalizedChildren) el.append(c);
 
   fragment.append(el);
   return { fragment, holes };
