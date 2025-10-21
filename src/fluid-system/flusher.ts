@@ -29,9 +29,10 @@ export const connectHoles = (holes: Hole[]) => {
       } else {
         hole.node.textContent = String(val);
       }
-    }
 
-    dirtyHoles.clear();
+      // Clear the dirty flag after updating
+      dirtyHoles.delete(hole);
+    }
   };
 
   const disconnect = () => {
