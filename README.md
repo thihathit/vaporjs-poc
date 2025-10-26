@@ -123,9 +123,9 @@ console.log(count.get()); // 6
 ```
 
 **Key characteristics:**
-- ✅ Synchronous reads and writes
-- ✅ Single dependency tracking
-- ✅ No batching. Updates are instant
+- ✅ Synchronous state reads and writes
+- ✅ Automatic dependency tracking
+- ✅ Batched re-rendering into a single frame
 
 ### 2. **JSX & The Fluid System**
 
