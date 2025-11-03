@@ -33,3 +33,7 @@ export const useWorker = (
     terminate: unloadHandler,
   };
 };
+
+export const isFunction = (v: unknown): v is Function => {
+  return typeof v === "function";
+};
