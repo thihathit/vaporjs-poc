@@ -1,17 +1,19 @@
+import { isFunction } from "../utilities";
+
 const atomIdentity = Symbol("Atom");
 
 export const createAtom = <T>(initial: T) => {
   let value = initial;
 
   type Subscriber = (newValue: T, oldValue: T) => void;
-  type Setter = (current: T) => T;
+  type Setter<S = T> = S | ((current: S) => S);
 
   const subs = new Set<Subscriber>();
 
   const get = () => value;
   const set = (setter: Setter) => {
     const oldValue = value;
-    const newValue = setter(value);
+    const newValue = isFunction(setter) ? setter(value) : setter;
 
     value = newValue;
 
