@@ -237,11 +237,13 @@ export const createMemo = <T>(fn: () => T): Signal<T> => {
   return signal;
 };
 
+// Create a derived per-index signal from a parent signal that returns an array.
+// The returned signal exposes the [signalIdentity] and a .subscribe method so
+// the runtime can treat it like a regular Signal.
 export const createIndex = <T>(
   parent: Signal<T[]>,
   index: number,
 ): Signal<T> => {
-  // Subscribers and effects local to this derived index-signal
   const subs = new Set<(newVal: T, oldVal: T) => void>();
   const effects = new Set<EffectRunner>();
 
@@ -264,7 +266,7 @@ export const createIndex = <T>(
   // identity
   signal[signalIdentity] = true;
 
-  // subscribe: forward parent changes but filter by index
+  // subscribe: allow listeners to observe index changes
   signal.subscribe = (fn: (newVal: T, oldVal: T) => void) => {
     subs.add(fn);
     return () => subs.delete(fn);
@@ -281,7 +283,9 @@ export const createIndex = <T>(
     },
   );
 
-  // Note: no explicit cleanup/unsubscribe of parentUnsub here (could be added if needed)
+  // Note: parentUnsub is intentionally not stored for automatic cleanup here.
+  // If needed, you can enhance createIndex to track active subscribers and
+  // unsubscribe from parent when there are none.
 
   return signal;
 };
