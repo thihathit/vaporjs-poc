@@ -1,33 +1,30 @@
-import { toValue } from "./atom";
 import type { Hole } from "./dom";
 
 export const connectHoles = (holes: Hole[]) => {
   const dirtyHoles = new Set<Hole>();
-  let connections: VoidFunction[] = [];
 
-  // Subscribe all holes but don’t update immediately
-  for (const hole of holes) {
-    const { subscribe } = hole.getter();
-    const sub = subscribe(() => {
-      if (!dirtyHoles.has(hole)) {
-        dirtyHoles.add(hole);
-      }
+  // Subscribe all holes but don't update immediately
+  const connections = holes.map((hole) => {
+    const signal = hole.getter();
+    return signal.subscribe(() => {
+      if (dirtyHoles.has(hole)) return;
+
+      dirtyHoles.add(hole);
     });
-    connections.push(sub);
-  }
+  });
 
   // Manual flush: only apply dirty ones
   const flush = () => {
     if (dirtyHoles.size === 0) return;
 
     for (const hole of dirtyHoles) {
-      const atom = hole.getter();
-      const val = toValue(atom);
+      const signal = hole.getter();
+      const value = String(signal());
 
       if (hole.prop) {
-        (hole.node as Element).setAttribute(hole.prop, String(val));
+        (hole.node as Element).setAttribute(hole.prop, value);
       } else {
-        hole.node.textContent = String(val);
+        hole.node.textContent = value;
       }
 
       // Clear the dirty flag after updating
@@ -38,8 +35,8 @@ export const connectHoles = (holes: Hole[]) => {
   const disconnect = () => {
     for (const sub of connections) {
       sub();
+      connections.splice(connections.indexOf(sub), 1);
     }
-    connections = [];
   };
 
   let syncFrameId: number | undefined;

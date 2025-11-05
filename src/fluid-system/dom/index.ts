@@ -1,9 +1,9 @@
-import { toValue, type Atom, isAtom } from "../atom";
+import { type Signal, isSignal } from "../atom";
 
 export type Hole = {
   node: Node;
   prop?: string;
-  getter: () => Atom<any>;
+  getter: () => Signal<any>;
 };
 
 export type RenderResult = {
@@ -43,14 +43,16 @@ export function jsx(tag: any, props: any, ...children: any[]): RenderResult {
       continue;
     }
 
-    if (isAtom(value)) {
-      const atom = value as Atom<any>;
+    // Check if value is a signal (function with signal identity)
+    if (isSignal(value)) {
       holes.push({
         node: el,
         prop: name,
-        getter: () => atom,
+        getter: () => value,
       });
-      el.setAttribute(name, String(toValue(atom)));
+
+      const nodeValue = String(value());
+      el.setAttribute(name, nodeValue);
     } else {
       el.setAttribute(name, String(value));
     }
@@ -86,15 +88,17 @@ function normalizeChildren(children: any, holes: Hole[]): Node[] {
       continue;
     }
 
-    if (isAtom(child)) {
-      const atom = child as Atom<any>;
+    // Check if child is a signal (function with signal identity)
+    if (isSignal(child)) {
+      const nodeValue = String(child());
+      const node = document.createTextNode(nodeValue);
 
-      const text = document.createTextNode(String(toValue(atom)));
       holes.push({
-        node: text,
-        getter: () => atom,
+        node,
+        getter: () => child,
       });
-      out.push(text);
+
+      out.push(node);
     }
     // is Fragment
     else if (typeof child === "object" && "fragment" in child) {

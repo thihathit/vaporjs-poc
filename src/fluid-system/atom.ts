@@ -1,19 +1,36 @@
 import { isFunction } from "../utilities";
 
-const atomIdentity = Symbol("Atom");
+const signalIdentity = Symbol("Signal");
 
-export const createAtom = <T>(initial: T) => {
+export type Signal<T> = ((() => T) & {
+  [signalIdentity]: true;
+  subscribe: (fn: (newValue: T, oldValue: T) => void) => () => void;
+});
+
+export const createAtom = <T>(initial: T): [Signal<T>, (value: T | ((prev: T) => T)) => T] => {
   let value = initial;
 
   type Subscriber = (newValue: T, oldValue: T) => void;
-  type Setter<S = T> = S | ((current: S) => S);
+  type Setter = T | ((current: T) => T);
 
   const subs = new Set<Subscriber>();
 
-  const get = () => value;
+  const signal = (() => value) as Signal<T>;
+  
+  // Attach signal identity
+  signal[signalIdentity] = true;
+  
+  // Attach subscribe method
+  signal.subscribe = (fn: Subscriber) => {
+    subs.add(fn);
+    return () => subs.delete(fn);
+  };
+
   const set = (setter: Setter) => {
     const oldValue = value;
     const newValue = isFunction(setter) ? setter(value) : setter;
+
+    if (oldValue === newValue) return newValue;
 
     value = newValue;
 
@@ -22,24 +39,14 @@ export const createAtom = <T>(initial: T) => {
     return newValue;
   };
 
-  const subscribe = (fn: Subscriber) => {
-    subs.add(fn);
-    return () => subs.delete(fn);
-  };
-
-  const atom = { get, set, atomIdentity, subscribe };
-
-  return [atom, set] as const;
+  return [signal, set] as const;
 };
 
-export type Atomic<T> = ReturnType<typeof createAtom<T>>;
-
-export type Atom<T> = Atomic<T>[0];
-
-export const isAtom = <T>(value: any): value is Atom<T> => {
-  if (!value) return false;
-
-  return value?.atomIdentity == atomIdentity;
+export const isSignal = <T>(value: any): value is Signal<T> => {
+  return typeof value === "function" && value[signalIdentity] === true;
 };
 
-export const toValue = <T>({ get }: Atom<T>): T => get();
+// Legacy support - keep for backward compatibility during migration
+export type Atom<T> = Signal<T>;
+export const isAtom = isSignal;
+export const toValue = <T>(signal: Signal<T>): T => signal();
