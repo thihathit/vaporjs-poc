@@ -11,21 +11,24 @@ export type RenderResult = {
   holes: Hole[];
 };
 
-export const Fragment = Symbol("Fragment");
+export function Fragment(props: any): RenderResult {
+  const fragment = document.createDocumentFragment();
+  const holes: Hole[] = [];
+  const children = normalizeChildren(props?.children, holes);
+  for (const c of children) fragment.append(c);
+  return { fragment, holes };
+}
 
-export function jsx(tag: string, props: any, ...children: any[]): RenderResult {
+export function jsx(tag: any, props: any, ...children: any[]): RenderResult {
   const fragment = document.createDocumentFragment();
   const holes: Hole[] = [];
 
   // Merge children from props and arguments
   const allChildren = children.length > 0 ? children : props?.children;
 
-  // Handle fragment
-  // @ts-ignore
-  if (tag === Fragment) {
-    const normalizedChildren = normalizeChildren(allChildren, holes);
-    for (const c of normalizedChildren) fragment.append(c);
-    return { fragment, holes };
+  // Support function components and Fragment component
+  if (typeof tag === "function") {
+    return tag({ ...(props || {}), children: allChildren });
   }
 
   const el = document.createElement(tag);
@@ -72,6 +75,17 @@ function normalizeChildren(children: any, holes: Hole[]): Node[] {
   for (const child of arr) {
     if (child == null || child === false) continue;
 
+    // Flatten arrays of children (e.g., from list.map(...))
+    if (Array.isArray(child)) {
+      const nested = normalizeChildren(child, holes);
+
+      // Append nested children to the output array
+      for (const n of nested) out.push(n);
+
+      // End current iteration
+      continue;
+    }
+
     if (isAtom(child)) {
       const atom = child as Atom<any>;
 
@@ -81,7 +95,9 @@ function normalizeChildren(children: any, holes: Hole[]): Node[] {
         getter: () => atom,
       });
       out.push(text);
-    } else if (typeof child === "object" && "fragment" in child) {
+    }
+    // is Fragment
+    else if (typeof child === "object" && "fragment" in child) {
       out.push(child.fragment);
       holes.push(...child.holes);
     } else {
