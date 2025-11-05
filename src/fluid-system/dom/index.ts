@@ -1,4 +1,4 @@
-import { type Signal, isSignal } from "../atom";
+import { type Signal, isSignal } from "../signal";
 
 export type Hole = {
   node: Node;
@@ -43,7 +43,8 @@ export function jsx(tag: any, props: any, ...children: any[]): RenderResult {
       continue;
     }
 
-    // Check if value is a signal (function with signal identity)
+    // Check if value is a signal or memo (function with signal identity)
+    // Memos are signals, so they're automatically tracked here
     if (isSignal(value)) {
       holes.push({
         node: el,
@@ -51,6 +52,7 @@ export function jsx(tag: any, props: any, ...children: any[]): RenderResult {
         getter: () => value,
       });
 
+      // Access the signal/memo to get current value and trigger dependency tracking
       const nodeValue = String(value());
       el.setAttribute(name, nodeValue);
     } else {
@@ -88,8 +90,10 @@ function normalizeChildren(children: any, holes: Hole[]): Node[] {
       continue;
     }
 
-    // Check if child is a signal (function with signal identity)
+    // Check if child is a signal or memo (function with signal identity)
+    // Memos are signals, so they're automatically tracked here
     if (isSignal(child)) {
+      // Access the signal/memo to get current value and trigger dependency tracking
       const nodeValue = String(child());
       const node = document.createTextNode(nodeValue);
 
