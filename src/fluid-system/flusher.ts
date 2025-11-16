@@ -1,30 +1,36 @@
 import type { Hole } from "./dom";
+import { createEffect } from "./signal";
 
 export const connectHoles = (holes: Hole[]) => {
   const dirtyHoles = new Set<Hole>();
+  let connections: VoidFunction[] = [];
 
-  // Subscribe all holes but don't update immediately
-  const connections = holes.map((hole) => {
-    const signal = hole.getter();
-    return signal.subscribe(() => {
-      if (dirtyHoles.has(hole)) return;
+  // Subscribe all holes but don’t update immediately
+  for (const hole of holes) {
+    const maybeAccessor = hole.getter();
+    const sub = createEffect(() => {
+      // Subscribe to the hole's value changes
+      maybeAccessor();
 
-      dirtyHoles.add(hole);
+      if (!dirtyHoles.has(hole)) {
+        dirtyHoles.add(hole);
+      }
     });
-  });
+    connections.push(sub);
+  }
 
   // Manual flush: only apply dirty ones
   const flush = () => {
     if (dirtyHoles.size === 0) return;
 
     for (const hole of dirtyHoles) {
-      const signal = hole.getter();
-      const value = String(signal());
+      const maybeAccessor = hole.getter();
+      const val = maybeAccessor();
 
       if (hole.prop) {
-        (hole.node as Element).setAttribute(hole.prop, value);
+        (hole.node as Element).setAttribute(hole.prop, String(val));
       } else {
-        hole.node.textContent = value;
+        hole.node.textContent = String(val);
       }
 
       // Clear the dirty flag after updating
@@ -35,8 +41,8 @@ export const connectHoles = (holes: Hole[]) => {
   const disconnect = () => {
     for (const sub of connections) {
       sub();
-      connections.splice(connections.indexOf(sub), 1);
     }
+    connections = [];
   };
 
   let syncFrameId: number | undefined;
