@@ -1,3 +1,5 @@
+import { equalFn } from "../utilities";
+
 let CURRENT_EFFECT: Effect | null = null;
 
 class Effect {
@@ -69,7 +71,7 @@ export type Signal<T> = ReturnType<typeof createSignal<T>>;
 
 export type Accessor<T> = Signal<T>[0];
 
-export const createSignal = <T>(initialValue: T) => {
+export const createSignal = <T>(initialValue: T, isEqual = equalFn) => {
   let value = initialValue;
 
   const subscribers: Set<Effect> = new Set();
@@ -88,8 +90,8 @@ export const createSignal = <T>(initialValue: T) => {
   const write = (newValue: T | ((currentValue: T) => T)): void => {
     const nextValue = newValue instanceof Function ? newValue(value) : newValue;
 
-    // shallow equality check to avoid needless re-scheduling
-    if (Object.is(nextValue, value)) return;
+    // Equality check to avoid needless re-scheduling
+    if (isEqual(nextValue, value)) return;
 
     value = nextValue;
 
@@ -104,6 +106,35 @@ export const createEffect = (fn: VoidFunction) => {
   const { dispose } = new Effect(fn);
 
   return dispose;
+};
+
+export const createMemo = <T>(fn: () => T, isEqual = equalFn): Accessor<T> => {
+  let value: T | undefined;
+
+  const subscribers = new Set<Effect>();
+
+  // Wrap memo computation in its own effect
+  new Effect(() => {
+    const next = fn();
+    const changed = !isEqual(next, value);
+
+    if (!changed) return;
+
+    value = next;
+
+    // Notify dependents of the memo
+    for (const eff of subscribers) eff.run();
+  });
+
+  const accessor = () => {
+    if (CURRENT_EFFECT) {
+      subscribers.add(CURRENT_EFFECT);
+      CURRENT_EFFECT.deps.push(subscribers);
+    }
+    return value as T;
+  };
+
+  return accessor;
 };
 
 export const isMaybeAccessor = <T>(value: unknown): value is Accessor<T> => {

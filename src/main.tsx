@@ -1,11 +1,30 @@
 import { connectHoles } from "./fluid-system/flusher";
-import { createEffect, createSignal } from "./fluid-system/signal";
+import { createEffect, createMemo, createSignal } from "./fluid-system/signal";
 import { jsx } from "./fluid-system/dom";
-import { useWorker } from "./utilities";
+import { shallowEqual, useWorker } from "./utilities";
 
 const [input, setInput] = createSignal("A");
 const [count1, setCount1] = createSignal(0);
 const [count2, setCount2] = createSignal(0);
+
+const [memoizeTest, setMem] = createSignal(3);
+const doubledM = createMemo(() => {
+  console.log("computed");
+  return memoizeTest() * 2;
+});
+
+const counters = createMemo(() => ({
+  count1: count1(),
+  count2: count2(),
+}));
+
+const everything = createMemo(
+  () => ({
+    counters: counters().count2,
+    input: input(),
+  }),
+  shallowEqual,
+);
 
 const increase2 = () => {
   setCount2((prev) => prev + 1);
@@ -20,7 +39,8 @@ useWorker(
 );
 
 createEffect(() => {
-  console.log(`Count 1: ${count1()} | Count 2: ${count2()}`);
+  console.log(everything());
+  // console.log(`Count 1: ${count1()} | Count 2: ${count2()}`);
 });
 
 // const App = () => <p>Counter 1: {count1}</p>;
@@ -51,6 +71,14 @@ const App = () => (
         }}
       />
     </div>
+
+    <hr />
+
+    <p>
+      memoizeTest: {memoizeTest()} | {doubledM()}
+    </p>
+    <button onClick={() => setMem(3)}>Three</button>
+    <button onClick={() => setMem(4)}>Four</button>
   </div>
 );
 
