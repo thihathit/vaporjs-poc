@@ -1,4 +1,4 @@
-import { isMaybeAccessor, type Accessor } from "../signal";
+import { createEffect, isMaybeAccessor, type Accessor } from "../signal";
 
 export type Hole = {
   node: Node;
@@ -19,6 +19,7 @@ export function Fragment(props: any): RenderResult {
   return { fragment, holes };
 }
 
+// TODO: Fix it later
 export function Index<T>(props: {
   each: Accessor<T[]>;
   children: (item: Accessor<T>, index: number) => RenderResult;
@@ -36,14 +37,63 @@ export function Index<T>(props: {
   if (isFactoryFn) {
     const list = props.each;
 
-    const allChildren = list().map((_, i) => {
-      const itemGetter = () => list()[i];
+    const listFragment = document.createComment("list");
+    fragment.append(listFragment);
 
-      return factory(itemGetter, i);
+    // Track per-item metadata so we can mutate the DOM minimally
+    const itemEntries: { nodes: Node[]; holesCount: number }[] = [];
+
+    createEffect(() => {
+      const arr = list();
+      const prevCount = itemEntries.length;
+      const nextCount = arr.length;
+
+      // Add new items (append only)
+      if (nextCount > prevCount) {
+        for (let i = prevCount; i < nextCount; i++) {
+          // Each item's getters reference the list by index so they stay correct
+          const itemGetter = () => list()[i];
+
+          const beforeHoles = holes.length;
+          const nodes = normalizeChildren(factory(itemGetter, i), holes);
+          const addedHoles = holes.length - beforeHoles;
+
+          // Insert after the sentinel comment; append subsequent items after the last inserted
+          listFragment.before(...nodes);
+
+          itemEntries.push({ nodes, holesCount: addedHoles });
+        }
+      }
+
+      // Remove excess items (remove from DOM and remove their holes from the shared holes array)
+      if (nextCount < prevCount) {
+        // Sum how many holes we will remove from the end
+        let totalHolesToRemove = 0;
+        for (let i = nextCount; i < prevCount; i++) {
+          totalHolesToRemove += itemEntries[i].holesCount;
+        }
+
+        // Remove DOM nodes for the tail entries
+        for (let i = nextCount; i < prevCount; i++) {
+          const entry = itemEntries[i];
+          for (const node of entry.nodes) {
+            node.remove();
+          }
+        }
+
+        // Remove holes from the end of the holes array (we always append holes for new items)
+        if (totalHolesToRemove > 0) {
+          holes.splice(holes.length - totalHolesToRemove, totalHolesToRemove);
+        }
+
+        // Truncate the entries list
+        itemEntries.splice(nextCount);
+      }
+
+      // If lengths are equal, we don't touch DOM structure. The individual item accessors
+      // (created when the item was first added) reference `list()[i]`, so their values
+      // will update and be flushed by the flusher without needing to re-create nodes.
     });
-
-    const nodes = normalizeChildren(allChildren, holes);
-    for (const n of nodes) fragment.append(n);
   }
 
   return { fragment, holes };

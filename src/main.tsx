@@ -6,6 +6,9 @@ import { shallowEqual, useWorker } from "./utilities";
 const [input, setInput] = createSignal("A");
 const [count1, setCount1] = createSignal(0);
 const [count2, setCount2] = createSignal(0);
+const [dList, setDList] = createSignal([0, 2]);
+
+const debug = createMemo(() => JSON.stringify(dList(), null, 2));
 
 const [memoizeTest, setMem] = createSignal(3);
 const doubledM = createMemo(() => {
@@ -86,6 +89,25 @@ const App = () => (
     <hr />
 
     <Index each={list}>
+      {(item, index) => (
+        <p>
+          Liste item {index}: {item}
+        </p>
+      )}
+    </Index>
+
+    <hr />
+
+    <button onClick={() => setDList((prev) => [...prev, Math.random()])}>
+      Add
+    </button>
+    <button onClick={() => setDList(([, ...rest]) => [Math.random(), ...rest])}>
+      Update First
+    </button>
+
+    {/*<pre>{debug}</pre>*/}
+
+    <Index each={dList}>
       {(item, index) => (
         <p>
           Liste item {index}: {item}
