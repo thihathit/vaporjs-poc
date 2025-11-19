@@ -1,6 +1,6 @@
 import { connectHoles } from "./fluid-system/flusher";
 import { createEffect, createMemo, createSignal } from "./fluid-system/signal";
-import { jsx } from "./fluid-system/dom";
+import { Index, jsx } from "./fluid-system/dom";
 import { shallowEqual, useWorker } from "./utilities";
 
 const [input, setInput] = createSignal("A");
@@ -25,6 +25,9 @@ const everything = createMemo(
   }),
   shallowEqual,
 );
+
+// Original usage: memo that returns an array of values
+const list = createMemo(() => [count1(), count1()]);
 
 const increase2 = () => {
   setCount2((prev) => prev + 1);
@@ -75,10 +78,20 @@ const App = () => (
     <hr />
 
     <p>
-      memoizeTest: {memoizeTest()} | {doubledM()}
+      memoizeTest: {memoizeTest} | {doubledM}
     </p>
     <button onClick={() => setMem(3)}>Three</button>
     <button onClick={() => setMem(4)}>Four</button>
+
+    <hr />
+
+    <Index each={list}>
+      {(item, index) => (
+        <p>
+          Liste item {index}: {item}
+        </p>
+      )}
+    </Index>
   </div>
 );
 

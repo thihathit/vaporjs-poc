@@ -19,6 +19,36 @@ export function Fragment(props: any): RenderResult {
   return { fragment, holes };
 }
 
+export function Index<T>(props: {
+  each: Accessor<T[]>;
+  children: (item: Accessor<T>, index: number) => RenderResult;
+}): RenderResult {
+  const fragment = document.createDocumentFragment();
+  const holes: Hole[] = [];
+
+  // if there are multiple children, we assume the first is the factory
+  const factory = Array.isArray(props.children)
+    ? props.children[0]
+    : props.children;
+
+  const isFactoryFn = typeof factory === "function";
+
+  if (isFactoryFn) {
+    const list = props.each;
+
+    const allChildren = list().map((_, i) => {
+      const itemGetter = () => list()[i];
+
+      return factory(itemGetter, i);
+    });
+
+    const nodes = normalizeChildren(allChildren, holes);
+    for (const n of nodes) fragment.append(n);
+  }
+
+  return { fragment, holes };
+}
+
 export function jsx(tag: any, props: any, ...children: any[]): RenderResult {
   const fragment = document.createDocumentFragment();
   const holes: Hole[] = [];
