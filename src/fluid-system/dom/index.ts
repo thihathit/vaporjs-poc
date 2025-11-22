@@ -1,4 +1,9 @@
-import { createEffect, isMaybeAccessor, type Accessor } from "../signal";
+import {
+  createEffect,
+  createMemo,
+  isMaybeAccessor,
+  type Accessor,
+} from "../signal";
 
 export type Hole = {
   node: Node;
@@ -52,7 +57,7 @@ export function Index<T>(props: {
       if (nextCount > prevCount) {
         for (let i = prevCount; i < nextCount; i++) {
           // Each item's getters reference the list by index so they stay correct
-          const itemGetter = () => list()[i];
+          const itemGetter = createMemo(() => list()[i]);
 
           const beforeHoles = holes.length;
           const nodes = normalizeChildren(factory(itemGetter, i), holes);
