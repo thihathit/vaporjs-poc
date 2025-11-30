@@ -1,4 +1,4 @@
-import { equalFn } from "../utilities";
+import { equalFn } from "./utilities";
 
 let CURRENT_EFFECT: Effect | null = null;
 

@@ -1,6 +1,6 @@
-import { connectHoles } from "./fluid-system/flusher";
-import { createEffect, createMemo, createSignal } from "./fluid-system/signal";
-import { Index, jsx } from "./fluid-system/dom";
+import { connectHoles } from "./web/flusher";
+import { createEffect, createMemo, createSignal } from "./signal";
+import { Index, jsx } from "./web";
 import { shallowEqual, useWorker } from "./utilities";
 
 const [input, setInput] = createSignal("A");

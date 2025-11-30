@@ -1,5 +1,5 @@
-import type { Hole } from "./dom";
-import { createEffect } from "./signal";
+import type { Hole } from ".";
+import { createEffect } from "../signal";
 
 export const connectHoles = (holes: Hole[]) => {
   const dirtyHoles = new Set<Hole>();
