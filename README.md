@@ -16,9 +16,9 @@ setState(3);  // Triggers render pipeline again
 // Result: Multiple render cycles, even within a single frame
 
 // VaporJS with FrameSync:
-setCount(1);  // Updates atom instantly (synchronous)
-setCount(2);  // Updates atom instantly (synchronous)
-setCount(3);  // Updates atom instantly (synchronous)
+setCount(1);  // Updates signal instantly (synchronous)
+setCount(2);  // Updates signal instantly (synchronous)
+setCount(3);  // Updates signal instantly (synchronous)
 // Result: One render on next frame with final value (count = 3)
 ```
 
@@ -30,10 +30,10 @@ setCount(3);  // Updates atom instantly (synchronous)
 ## Key Features
 
 ### ⚡ **Instant State Updates**
-Atom mutations are synchronous. No batching delays, no microtasks, no promises.
+Signal mutations are synchronous. No batching delays, no microtasks, no promises.
 
 ```javascript
-const [count, setCount] = createAtom(0);
+const [count, setCount] = createSignal(0);
 
 setCount(5); // Updates immediately
 console.log(count()); // 5 - instantly readable
@@ -46,7 +46,7 @@ Asynchronous DOM updates happen once per display frame via `requestAnimationFram
 Like Solid.js, VaporJS tracks reactive dependencies and updates only affected DOM nodes. No virtual DOM, no diffing.
 
 ```jsx
-const [count, setCount] = createAtom(0);
+const [count, setCount] = createSignal(0);
 
 // Only the text node updates when count changes
 <div>
@@ -62,18 +62,18 @@ VaporJS uses JSX for ergonomics but extracts reactive "holes" at runtime, bindin
 When your tab goes to the background, `requestAnimationFrame` pauses automatically. Saving CPU and battery.
 
 ### 🎨 **Zero Wasted Renders**
-No matter how many atom updates happen in a frame, only one render occurs. Perfectly synced to display refresh.
+No matter how many signal updates happen in a frame, only one render occurs. Perfectly synced to display refresh.
 
 ## Quick Start
 
 Clone the repo. Navigate to `src/main.tsx`.
 
 ```tsx
-import { createAtom } from "./atom";
-import { jsx } from "./fluid-system/dom";
-import { connectHoles } from "./fluid-system/flusher";
+import { createSignal } from "./signal";
+import { jsx } from "./web";
+import { connectHoles } from "./web/flusher";
 
-const [count, setCount] = createAtom(0);
+const [count, setCount] = createSignal(0);
 
 const App = () => (
   <div>
@@ -98,17 +98,17 @@ That's it! VaporJS handles the rest.
 
 ## Core Concepts
 
-### 1. **Atoms** (Reactive State)
+### 1. **Signals** (Reactive State)
 
-Atoms are VaporJS's reactive primitives. Similar to Solid.js signals.
+Signals are VaporJS's reactive primitives. Similar to Solid.js signals.
 
 > [!WARNING]
-> The current atom implementation will be replaced with a more efficient system to provide finer-grained control.
+> The current signal implementation will be replaced with a more efficient system to provide finer-grained control.
 
 ```typescript
-import { createAtom } from "./atom";
+import { createSignal } from "./signal";
 
-const [count, setCount] = createAtom(0);
+const [count, setCount] = createSignal(0);
 
 // Read value
 console.log(count.get()); // 0
@@ -127,14 +127,14 @@ console.log(count.get()); // 6
 - ✅ Automatic dependency tracking
 - ✅ Batched re-rendering into a single frame
 
-### 2. **JSX & The Fluid System**
+### 2. **Reactive DOM**
 
-VaporJS uses JSX for templating but processes it similar to SolidJS:
+VaporJS uses `JSX` for templating but processes it similar to SolidJS:
 
 ```tsx
-import { jsx } from "./fluid-system/dom";
+import { jsx } from "./web";
 
-const [name, setName] = createAtom("World");
+const [name, setName] = createSignal("World");
 
 const Greeting = () => (
   <div>
@@ -158,7 +158,7 @@ The magic happens in `syncFrame()`:
 
 **What it does:**
 ```typescript
-// Check which atoms changed (dirty flag)
+// Check which signals changed (dirty flag)
 const { syncFrame } = connectHoles(tree.holes);
 
 // Starts the render loop
@@ -174,7 +174,7 @@ syncFrame();
 ```
 User clicks button
   ↓
-setCount(prev => prev + 1)  ← Atom updates instantly
+setCount(prev => prev + 1)  ← Signal updates instantly
   ↓
 Marks dependent nodes as "dirty"
   ↓
@@ -186,7 +186,7 @@ Display refreshes → User sees change
 ```
 
 **Timeline:**
-- `t=0ms`: Button click, atom updates, dirty flag set
+- `t=0ms`: Button click, signal updates, dirty flag set
 - `t=16ms`: Display refreshes, `syncFrame()` flushes dirty nodes
 - Result: One render per frame, perfectly synced
 
@@ -196,7 +196,7 @@ Display refreshes → User sees change
 
 ```
 ┌─────────────────────────────────┐
-│     Atom Layer (State)          │
+│     Signal Layer (State)        │
 │  - Instant, synchronous updates │
 │  - Dependency tracking          │
 │  - Dirty flag management        │
@@ -206,18 +206,18 @@ Display refreshes → User sees change
                ↓
 ┌─────────────────────────────────┐
 │   Reactive Holes (Bindings)     │
-│  - Maps atoms → DOM nodes       │
+│  - Maps signals → DOM nodes     │
 │  - Tracks "dirty" state         │
 └──────────────┬──────────────────┘
                │
                │ reads
                ↓
-┌─────────────────────────────────┐
-│  FrameSync Loop (Rendering)     │
+┌──────────────────────────────────┐
+│  FrameSync Loop (Rendering)      │
 │  - Runs via requestAnimationFrame│
 │  - Flushes dirty nodes once/frame│
-│  - Updates DOM directly         │
-└─────────────────────────────────┘
+│  - Updates DOM directly          │
+└──────────────────────────────────┘
 ```
 
 ### Comparison to Other Frameworks
@@ -237,7 +237,7 @@ Display refreshes → User sees change
 ### Real-time Data Visualization
 
 ```tsx
-const [dataPoints, setDataPoints] = createAtom([]);
+const [dataPoints, setDataPoints] = createSignal([]);
 
 // Simulate high-frequency updates (e.g., stock prices)
 setInterval(() => {
@@ -266,7 +266,7 @@ const Chart = () => (
 ### Game-like Animation
 
 ```tsx
-const [player, setPlayer] = createAtom({ x: 0, y: 0, vx: 0, vy: 0 });
+const [player, setPlayer] = createSignal({ x: 0, y: 0, vx: 0, vy: 0 });
 
 // Physics update (runs every frame)
 const update = (deltaTime) => {
