@@ -66,7 +66,7 @@ No matter how many signal updates happen in a frame, only one render occurs. Per
 
 ## Quick Start
 
-Clone the repo. Navigate to `src/main.tsx`.
+Clone the repo. Navigate to `src/playground.tsx`.
 
 ```tsx
 import { createSignal } from "./signal";
