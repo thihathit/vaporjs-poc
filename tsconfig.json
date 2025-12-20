@@ -22,7 +22,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
-    "jsx": "react",
+    "jsx": "preserve",
     "jsxFactory": "jsx",
     "jsxFragmentFactory": "Fragment"
   },
